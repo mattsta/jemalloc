@@ -89,7 +89,7 @@ function(GeneratePublicSymbolsList public_sym_list mangling_map symbol_prefix ou
             list(REMOVE_ITEM  public_sym_list ${sym})
             file(APPEND "${output_file}" "${map_entry}\n")
         endforeach()
-    endif()  
+    endif()
 
     foreach(pub_sym ${public_sym_list})
         file(APPEND "${output_file}" "${pub_sym}:${symbol_prefix}${pub_sym}\n")
@@ -98,7 +98,7 @@ function(GeneratePublicSymbolsList public_sym_list mangling_map symbol_prefix ou
     # Generate files depending on symbols list
     GenerateJemallocRename("${PUBLIC_SYM_FILE}"
                            "${JEMALLOC_RENAME_HDR}")
-    GenerateJemallocMangle("${PUBLIC_SYM_FILE}" ${je_}
+    GenerateJemallocMangle("${PUBLIC_SYM_FILE}" ${symbol_prefix}
                            "${JEMALLOC_MANGLE_HDR}")
 
     # Needed for tests
@@ -131,7 +131,7 @@ function(GenerateJemallocMangle public_sym_list symbol_prefix output_file)
     file(STRINGS "${public_sym_list}" INPUT_STRINGS)
 
     foreach(line ${INPUT_STRINGS})
-        string(REGEX REPLACE "([^ \t]*):[^ \t]*" "#  define \\1 ${symbol_prefix}\\1" output ${line})      
+        string(REGEX REPLACE "([^ \t]*):[^ \t]*" "#  define \\1 ${symbol_prefix}\\1" output ${line})
         file(APPEND "${output_file}" "${output}\n")
     endforeach()
 
@@ -148,7 +148,7 @@ function(GenerateJemallocMangle public_sym_list symbol_prefix output_file)
         )
 
     foreach(line ${INPUT_STRINGS})
-        string(REGEX REPLACE "([^ \t]*):[^ \t]*" "#  undef ${symbol_prefix}\\1" output ${line})      
+        string(REGEX REPLACE "([^ \t]*):[^ \t]*" "#  undef ${symbol_prefix}\\1" output ${line})
         file(APPEND "${output_file}" "${output}\n")
     endforeach()
 
@@ -160,7 +160,7 @@ endfunction()
 # Generate jemalloc_rename.h per jemalloc_rename.sh
 function(GenerateJemallocRename public_sym_list_file file_path)
     if(EXISTS "${file_path}" AND
-	   "${file_path}" IS_NEWER_THAN "${public_sym_list_file}")
+       "${file_path}" IS_NEWER_THAN "${public_sym_list_file}")
         return()
     endif()
 
@@ -345,7 +345,7 @@ function(GetAndParseVersion)
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             OUTPUT_VARIABLE jemalloc_version)
 
-        # Figure out version components    
+        # Figure out version components
         string (REPLACE "\n" "" jemalloc_version  ${jemalloc_version})
         set(jemalloc_version ${jemalloc_version} PARENT_SCOPE)
         #        message(STATUS "Version is ${jemalloc_version}")

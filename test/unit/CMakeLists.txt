@@ -8,17 +8,27 @@ set(UnitTests
     arena_reset.c
     arena_reset_prof.c
     atomic.c
+    background_thread.c
+    background_thread_enable.c
     base.c
+    binshard.c
+    bit_util.c
     bitmap.c
     ckh.c
     decay.c
+    div.c
+    emitter.c
     extent_quantize.c
     fork.c
     hash.c
+    hook.c
+    huge.c
     junk.c
     junk_alloc.c
     junk_free.c
+    log.c
     mallctl.c
+    malloc_io.c
     math.c
     mq.c
     mtx.c
@@ -31,16 +41,24 @@ set(UnitTests
     prof_active.c
     prof_gdump.c
     prof_idump.c
+    prof_log.c
     prof_reset.c
+    prof_tctx.c
     prof_thread_name.c
     ql.c
     qr.c
     rb.c
+    retained.c
     rtree.c
+    sc.c
+    seq.c
     size_classes.c
     slab.c
     smoothstep.c
+    spin.c
     stats.c
+    stats_print.c
+    test_hooks.c
     ticker.c
     tsd.c
     witness.c
@@ -69,7 +87,7 @@ foreach(sourcefile ${UnitTests})
         "${C_UNITETEST_DEFS}")
     target_link_libraries(${exename} ${PROJECT_NAME}UnitTest)
     target_link_libraries(${exename} ${PROJECT_NAME}-jet-static)
-    target_link_libraries(${exename} pthread)
+    target_link_libraries(${exename} pthread dl)
 
     add_test(NAME ${exename} COMMAND ${exename})
     add_dependencies(check-jemalloc ${exename})

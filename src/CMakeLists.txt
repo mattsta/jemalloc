@@ -137,7 +137,6 @@ foreach(sym ${JEMALLOC_CMAKE_SOURCES})
         #        "Touching ${target} ${objectDir}/${obj}"
     )
 endforeach()
-
 endfunction()
 
 add_library(${PROJECT_NAME}-syms STATIC ${JEMALLOC_CMAKE_SOURCES})
@@ -169,6 +168,22 @@ add_library(${PROJECT_NAME}-shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}-syms)
 
+if(clock_gettime_in_librt)
+    target_link_libraries(${PROJECT_NAME}-shared rt)
+endif()
+
+if(has_libpthread)
+    target_link_libraries(${PROJECT_NAME}-shared pthread)
+endif()
+
+if(has_libm)
+    target_link_libraries(${PROJECT_NAME}-shared m)
+endif()
+
+if(JEMALLOC_HAVE_DLSYM)
+    target_link_libraries(${PROJECT_NAME}-shared dl)
+endif()
+
 # Set the name of static and shared lib filenames to be "libjemalloc.*"
 # instead of their full CMake libary names of libjemalloc-static.a, etc.
 set_target_properties(${PROJECT_NAME}-shared PROPERTIES
@@ -179,7 +194,7 @@ set_target_properties(${PROJECT_NAME}-static PROPERTIES
 # Need to export from DLL
 target_compile_definitions(${PROJECT_NAME}-shared PRIVATE DLLEXPORT)
 
-if(with-jemalloc-prefix)
+if(JEMALLOC_PREFIX)
     target_compile_definitions(${PROJECT_NAME}-static PRIVATE JEMALLOC_MANGLE)
     target_compile_definitions(${PROJECT_NAME}-shared PRIVATE JEMALLOC_MANGLE)
 endif()

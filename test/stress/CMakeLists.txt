@@ -1,6 +1,7 @@
 ############################################################################
 # Microbench
 set(TESTS_STRESS
+    hookbench.c
     microbench.c
     )
 
@@ -16,8 +17,7 @@ foreach(sourcefile ${TESTS_STRESS})
         ${PROJECT_SOURCE_DIR}/test/include)
     target_compile_definitions(${exename} PRIVATE JEMALLOC_STRESS_TEST)
 
-    # We can't use {static, static} here because of name conflicts
     target_link_libraries(${exename} ${C_TESTLIB_STRESS} ${PROJECT_NAME}-shared)
     target_link_libraries(${exename} ${PROJECT_NAME}-jet-static)
     target_link_libraries(${exename} pthread)
-endforeach(sourcefile ${TESTS_UNIT})
+endforeach()

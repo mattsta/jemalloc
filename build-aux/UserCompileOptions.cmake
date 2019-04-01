@@ -51,13 +51,36 @@ set(JEMALLOC_VERSION ""
 #920-AC_ARG_WITH([jemalloc_prefix],
 #921:  [AS_HELP_STRING([--with-jemalloc-prefix=<prefix>], [Prefix to prepend to all public APIs])],
 #922-  [JEMALLOC_PREFIX="$with_jemalloc_prefix"],
-set(JEMALLOC_PREFIX "je_"
-    CACHE STRING "Prefix to prepent to all public APIs")
+set(JEMALLOC_PREFIX ""
+    CACHE STRING "Prefix to prepend to all public APIs")
+
+if(NOT JEMALLOC_PREFIX)
+    if(abi MATCHES "macho" OR abi MATCHES "pecoff")
+        set(JEMALLOC_PREFIX "\"je_\"")
+    endif()
+endif()
+
+if(JEMALLOC_PREFIX)
+    # JEMALLOC_PREFIX _must_ include the quotes.
+    # If the user didn't supply quotes themselves, augment for them.
+    if(NOT JEMALLOC_PREFIX MATCHES \")
+        set(JEMALLOC_PREFIX "\"${JEMALLOC_PREFIX}\"")
+    endif()
+    set(JEMALLOC_PRIVATE_NAMESPACE ${JEMALLOC_PREFIX})
+    string(TOUPPER ${JEMALLOC_PREFIX} JEMALLOC_CPREFIX)
+else()
+    # No prefix, ${prefix}malloc() => malloc() for overrides
+    set(JEMALLOC_IS_MALLOC 1)
+endif()
 #--
 #939-AC_ARG_WITH([export],
 #940:  [AS_HELP_STRING([--without-export], [disable exporting jemalloc public APIs])],
-set(JEMALLOC_EXPORT ""
-    CACHE STRING "Disable exporting jemalloc public APIs")
+option(JEMALLOC_EXPORT YES "Enable exporting jemalloc public APIs")
+if(NOT JEMALLOC_EXPORT)
+    # export is disabled by setting the default attribute visibility hiding
+    # to an empty string
+    set(JEMALLOC_EXPORT " ")
+endif()
 #--
 #990-AC_ARG_WITH([private_namespace],
 #991:  [AS_HELP_STRING([--with-private-namespace=<prefix>], [Prefix to prepend to all library-private APIs])],
@@ -69,6 +92,10 @@ set(private_namespace ${JEMALLOC_PRIVATE_NAMESPACE})
 #1000-AC_ARG_WITH([install_suffix],
 #1001:  [AS_HELP_STRING([--with-install-suffix=<suffix>], [Suffix to append to all installed files])],
 #1002-  [INSTALL_SUFFIX="$with_install_suffix"],
+set(JEMALLOC_INSTALL_SUFFIX "" CACHE STRING "Suffix to append to all installed files")
+if(JEMALLOC_INSTALL_SUFFIX)
+    set(install_suffix ${JEMALLOC_INSTALL_SUFFIX})
+endif()
 #--
 #1009-AC_ARG_WITH([malloc_conf],
 #1010:  [AS_HELP_STRING([--with-malloc-conf=<malloc_conf>], [config.malloc_conf options string])],
@@ -78,6 +105,8 @@ set(JEMALLOC_CONFIG_MALLOC_CONF "\"\""
 #1092-AC_ARG_ENABLE([debug],
 #1093:  [AS_HELP_STRING([--enable-debug],
 #1094-                  [Build debugging code])],
+option(JEMALLOC_DEBUG "Build debugging code" OFF)
+# NOTE: this is independent from the CMake release Debug mode
 #--
 #1127-AC_ARG_ENABLE([stats],
 #1128:  [AS_HELP_STRING([--disable-stats],
@@ -148,6 +177,7 @@ option(JEMALLOC_EXTRA_SIZE_CHECK "Perform additional size sanity checks" OFF)
 #1505-AC_ARG_WITH([lg_page],
 #1506:  [AS_HELP_STRING([--with-lg-page=<lg-page>], [Base 2 log of system page size])],
 #1507-  [LG_PAGE="$with_lg_page"], [LG_PAGE="detect"])
+set(LG_PAGE "detect" CACHE STRING "Base 2 log of system page size")
 #--
 #1559-AC_ARG_WITH([lg_hugepage],
 #1560:  [AS_HELP_STRING([--with-lg-hugepage=<lg-hugepage>],
@@ -156,7 +186,20 @@ option(JEMALLOC_EXTRA_SIZE_CHECK "Perform additional size sanity checks" OFF)
 #1595-AC_ARG_ENABLE([libdl],
 #1596:  [AS_HELP_STRING([--disable-libdl],
 #1597-  [Do not use libdl])],
-option(JEMALLOC_DLSYM_DISABLE "Do not use libdl" OFF)
+option(JEMALLOC_LIBDL_DISABLE "Do not use libdl" OFF)
+# Note: this is here instead of in DetectCompilerFeatures because
+# JEMALLOC_LIBDL_DISABLE is a user setting, and user settings are
+# configured _after_ the compiler detection settings.
+if(NOT JEMALLOC_LIBDL_DISABLE)
+    include(CheckIncludeFiles)
+    include(CheckSymbolExists)
+    check_include_files(dlfcn.h has_dlfcn_h)
+    if(has_dlfcn_h)
+        set(CMAKE_REQUIRED_LIBRARIES "dl")
+        check_symbol_exists(dlsym "dlfcn.h" JEMALLOC_HAVE_DLSYM)
+        set(CMAKE_REQUIRED_LIBRARIES)
+    endif()
+endif()
 #--
 #1713-AC_ARG_ENABLE([syscall],
 #1714:  [AS_HELP_STRING([--disable-syscall], [Disable use of syscall(2)])],
@@ -168,6 +211,18 @@ endif()
 #1804-AC_ARG_ENABLE([lazy_lock],
 #1805:  [AS_HELP_STRING([--enable-lazy-lock],
 #1806-  [Enable lazy locking (only lock when multi-threaded)])],
+option(JEMALLOC_LAZY_LOCK "Enable lazy locking (only lock when multi-threaded)" OFF)
+if(JEMALLOC_LAZY_LOCK)
+    if(NOT JEMALLOC_HAVE_DLSYM)
+        message(FATAL_ERROR
+            "Missing dlsym support: lazy-lock cannot be enabled.")
+    endif()
+elseif(force-lazy-lock AND abi MATCHES "pecoff")
+    message(WARNING
+        "Forcing no lazy-lock because thread creation monitoring is unimplemented")
+elseif(force-lazy-lock)
+    set(JEMALLOC_LAZY_LOCK ON)
+endif()
 #--
 #2078-AC_ARG_ENABLE([zone-allocator],
 #2079:  [AS_HELP_STRING([--disable-zone-allocator],

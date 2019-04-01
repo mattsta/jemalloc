@@ -2,16 +2,22 @@ set(TESTS_INTEGRATION
     MALLOCX_ARENA.c
     aligned_alloc.c
     allocated.c
-    # extent.c # not a valid test
+    extent.c
+    malloc.c
     mallocx.c
     overflow.c
     posix_memalign.c
     rallocx.c
     sdallocx.c
+    slab_sizes.c
     thread_arena.c
     thread_tcache_enabled.c
     xallocx.c
     )
+
+if(JEMALLOC_EXPERIMENTAL_SMALLOCX_API)
+    list(APPEND TESTS_INTEGRATION smallocx.c)
+endif()
 
 ##########################################################################
 # Build integration tests
@@ -26,7 +32,7 @@ foreach(sourcefile ${TESTS_INTEGRATION})
     target_compile_definitions(${exename} PRIVATE JEMALLOC_INTEGRATION_TEST)
 
     target_link_libraries(${exename} ${C_TESTLIB_INTEGRATION} ${PROJECT_NAME}-static)
-    target_link_libraries(${exename} pthread)
+    target_link_libraries(${exename} pthread dl)
 
     add_test(NAME ${exename} COMMAND ${exename})
     add_dependencies(check-jemalloc ${exename})
