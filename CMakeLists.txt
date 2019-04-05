@@ -1,21 +1,26 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-# Require CMake >= 3.0 for check_c_compiler_flag support
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 project(jemalloc C CXX)
 
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
+# This globally enables PIC building.
+# If we want PIC and non-PIC builds, disable this and manually manage flags
+# for custom pic-vs-non-pic targets in src/.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-include(CTest)
-
+# Order of includes matters here. Modify at your own risk.
 include(${PROJECT_SOURCE_DIR}/build-aux/Utilities.cmake)
 include(${PROJECT_SOURCE_DIR}/build-aux/GetSystemSizes.cmake)
 include(${PROJECT_SOURCE_DIR}/build-aux/GetSystemAddrBits.cmake)
 include(${PROJECT_SOURCE_DIR}/build-aux/DetectOSFeatures.cmake) # 1
 include(${PROJECT_SOURCE_DIR}/build-aux/DetectCompilerFeatures.cmake) # 2
 
+# Tell CMake where to find default headers:
 include_directories(${PROJECT_SOURCE_DIR}/include)
+
+# Also tell CMake where to find out-of-source generated headers:
 include_directories(${PROJECT_BINARY_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include/jemalloc)
 
@@ -24,24 +29,6 @@ include(${PROJECT_SOURCE_DIR}/build-aux/UserCompileOptions.cmake)
 
 # Enable smallocx by default too
 set(JEMALLOC_EXPERIMENTAL_SMALLOCX_API 1)
-
-# install_prefix - installation directory prefix
-# with-xslroot=<path>  XSL stylesheet root path
-
-# Installation
-# Munge install path variables.
-# All of these can simply we be passed as
-# Cmake arguments
-if(NOT install_prefix)
-    set(install_prefix "/usr/local")
-endif()
-
-# We do not support exec_prefix until we find it is necessary
-if(NOT exec_prefix)
-    set(exec_prefix ${install_prefix})
-endif()
-
-set(PREFIX ${install_prefix})
 
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
@@ -118,9 +105,9 @@ else()
     endif()
 endif()
 
-if(JEMALLOC_VERSION)
+if(JEMALLOC_VERSION_USER)
     # If user requested specific version number, use directly
-    set(jemalloc_version ${JEMALLOC_VERSION})
+    set(jemalloc_version ${JEMALLOC_VERSION_USER})
 else()
     # else, introspect the current git repo to find numbers and hashes
     set(jemalloc_version "0.0.0-0-g0000000000000000000000000000000000000000")
@@ -131,6 +118,8 @@ else()
     set(jemalloc_version_gid "0")
 
     find_package(Git)
+
+    # GetAndParseVersion() populates jemalloc_version when it returns
     GetAndParseVersion()
 endif()
 
@@ -146,11 +135,10 @@ endif()
 # but ALSO the headers use 'je_' as a non-quoted string for
 # appending to other symbols directly (and we also use it for
 # this purpose and for generating prefixed filenames)
-#set(je_ je_) # in-header prefix for je_blahblah
 if(JEMALLOC_PREFIX)
     string(REPLACE "\"" "" je_ ${JEMALLOC_PREFIX})
 else()
-    set(je_ je_)
+    set(je_ "je_")
 endif()
 
 include(CheckFunctionExists)
@@ -192,7 +180,7 @@ if(NOT JEMALLOC_PREFIX)
     endif()
 endif()
 
-set(JEMALLOC_PREFIX_JET jet_)
+set(JEMALLOC_PREFIX_JET "jet_")
 
 # Base 2 log of minimum tiny size class to support
 set(LG_TINY_MIN 3)
@@ -271,9 +259,12 @@ add_custom_command(
     ${syms}
     >
     "${PROJECT_BINARY_DIR}/include/jemalloc/internal/private_symbols${end}.awk"
-    DEPENDS
-    "${PROJECT_SOURCE_DIR}/include/jemalloc/internal/private_symbols.sh"
     VERBATIM
+    # Add a depends on the source file itself because ${syms} is a static list
+    # of function names defined here in CMakeLists.txt, so we can't tell the
+    # input to this command is newer than the output file or not.
+    DEPENDS
+    "${PROJECT_SOURCE_DIR}/CMakeLists.txt"
 )
 endmacro()
 
@@ -305,7 +296,8 @@ endforeach()
 
 # Generate main public header
 set(JEMALLOC_HDR
-    "${PROJECT_BINARY_DIR}/include/jemalloc/jemalloc${install_suffix}.h")
+    "${PROJECT_BINARY_DIR}/include/jemalloc/jemalloc${install_suffix}.h"
+    CACHE INTERNAL "jemalloc public header")
 
 # These are headers compiled by jemalloc.sh
 set(JEMALLOC_HDR_LIST
@@ -352,7 +344,7 @@ ConfigureFile(
     "${PROJECT_BINARY_DIR}/test/include/test/jemalloc_test.h" False)
 
 # Use jet_ generate protos_jet
-set(je_ jet_)
+set(je_ "jet_")
 
 # replace prefix only
 ConfigureFile(
@@ -363,40 +355,37 @@ ConfigureFile(
 if(JEMALLOC_PREFIX)
     string(REPLACE "\"" "" je_ ${JEMALLOC_PREFIX})
 else()
-    set(je_ je_)
+    set(je_ "je_")
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    set(enable-prefixed-jemalloc-library ON)
     include_directories(${PROJECT_BINARY_DIR}/test/include)
-endif()
-
-# TODO: all of these variables need to be refactored (here and src/ and test/).
-# All these things are from the original jemalloc-cmake repo which had
-# some oddities we are still trying to flush out.
-if(enable-prefixed-jemalloc-library)
-    # jet builds use header in jemalloc/internal binary path
     include_directories(${PROJECT_BINARY_DIR}/include/jemalloc/internal)
-    set(C_JETLIB_DEFS "JEMALLOC_JET")
+
+    # TODO: all of these variables need to be refactored (here against src,test)
+    # This code organization is from the abandoned jemalloc-cmake repo which had
+    # some oddities we are still trying to flush out.
 
     set(C_UTIL_INTEGRATION_DEFS "")
-    set(C_TESTLIB_INTEGRATION_DEFS "JEMALLOC_INTEGRATION_TEST")
+    set(C_TESTLIB_INTEGRATION_DEFS
+        JEMALLOC_INTEGRATION_TEST
+    )
     set(C_TESTLIB_INTEGRATION ${PROJECT_NAME}IntegrationTest${install_suffix})
 
-    set(C_TESTLIB_UNIT_DEFS "JEMALLOC_UNIT_TEST")
-    set(C_TESTLIB_STRESS_DEF "JEMALLOC_STRESS_TEST;JEMALLOC_STRESS_TESTLIB")
+    set(C_TESTLIB_UNIT_DEFS
+        JEMALLOC_UNIT_TEST
+    )
+    set(C_TESTLIB_STRESS_DEF
+        JEMALLOC_STRESS_TEST
+        JEMALLOC_STRESS_TESTLIB
+    )
     set(C_TESTLIB_STRESS ${PROJECT_NAME}TestStress${install_suffix})
 
-    set(C_UNITETEST_DEFS "JEMALLOC_UNIT_TEST")
+    set(C_UNITETEST_DEFS
+        JEMALLOC_UNIT_TEST
+    )
 
-    if(with-jemalloc-prefix)
-        set(C_JETLIB_DEFS  "${C_JETLIB_DEFS};JEMALLOC_MANGLE")
-        set(C_UTIL_INTEGRATION_DEFS
-            "${C_UTIL_INTEGRATION_DEFS};JEMALLOC_MANGLE")
-    endif()
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+    include(CTest)
     enable_testing()
 
     # check target is scoped with -jemalloc because when jemalloc

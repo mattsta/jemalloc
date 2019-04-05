@@ -26,7 +26,7 @@ set(LG_VADDR "detect"
 #548-AC_ARG_WITH([version],
 #549:  [AS_HELP_STRING([--with-version=<major>.<minor>.<bugfix>-<nrev>-g<gid>],
 #550-   [Version string])],
-set(JEMALLOC_VERSION ""
+set(JEMALLOC_VERSION_USER ""
     CACHE STRING "Version string <major>.<minor>.<bugfix>-<nrev>-g<gid>")
 #--
 #855-AC_ARG_WITH([rpath],
@@ -85,8 +85,13 @@ endif()
 #990-AC_ARG_WITH([private_namespace],
 #991:  [AS_HELP_STRING([--with-private-namespace=<prefix>], [Prefix to prepend to all library-private APIs])],
 #992-  [JEMALLOC_PRIVATE_NAMESPACE="${with_private_namespace}je_"],
-set(JEMALLOC_PRIVATE_NAMESPACE "je_"
+set(JEMALLOC_PRIVATE_NAMESPACE je_
     CACHE STRING "Prefix to prepend to all library-private APIs")
+
+# namespaces may not contain quotes because they are for C concat
+string(REPLACE "\"" "" JEMALLOC_PRIVATE_NAMESPACE ${JEMALLOC_PRIVATE_NAMESPACE})
+
+# Populate variable used for header template configuration
 set(private_namespace ${JEMALLOC_PRIVATE_NAMESPACE})
 #--
 #1000-AC_ARG_WITH([install_suffix],
