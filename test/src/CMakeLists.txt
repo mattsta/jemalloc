@@ -16,35 +16,30 @@ set(UnitTestCommon
 ############################################################################
 # Unit tests test library
 # Unit test have access to all of the interfaces
-# and we link to a JET library thus JEMALLOC_JET is automatically defined
 add_library(${PROJECT_NAME}UnitTest STATIC ${UnitTestCommon})
 add_dependencies(${PROJECT_NAME}UnitTest ${PROJECT_NAME}-jet-static)
 target_include_directories(${PROJECT_NAME}UnitTest PRIVATE
     ${PROJECT_SOURCE_DIR}/test/include)
-target_compile_options(${PROJECT_NAME}UnitTest PRIVATE
-    "${COMMON_TESTLIB_CC_FLAGS}")
-target_compile_definitions(${PROJECT_NAME}UnitTest PRIVATE
-    "${C_TESTLIB_UNIT_DEFS}")
+target_compile_definitions(${PROJECT_NAME}UnitTest
+    PRIVATE
+    JEMALLOC_UNIT_TEST)
 
 ############################################################################
 # Integration test library
-add_library(${C_TESTLIB_INTEGRATION} STATIC ${UnitTestCommon})
-add_dependencies(${C_TESTLIB_INTEGRATION} ${PROJECT_NAME}-jet-static)
-target_include_directories(${C_TESTLIB_INTEGRATION} PRIVATE
+add_library(${PROJECT_NAME}IntegrationTest STATIC ${UnitTestCommon})
+add_dependencies(${PROJECT_NAME}IntegrationTest ${PROJECT_NAME}-jet-static)
+target_include_directories(${PROJECT_NAME}IntegrationTest PRIVATE
     ${PROJECT_SOURCE_DIR}/test/include)
-target_compile_options(${C_TESTLIB_INTEGRATION} PRIVATE
-    "${COMMON_TESTLIB_CC_FLAGS}")
-target_compile_definitions(${C_TESTLIB_INTEGRATION} PRIVATE
-    "${C_TESTLIB_INTEGRATION_DEFS}")
+target_compile_definitions(${PROJECT_NAME}IntegrationTest PRIVATE
+    JEMALLOC_INTEGRATION_TEST)
 
 ############################################################################
 # Stress test library to link with microbench
-add_library(${C_TESTLIB_STRESS} STATIC ${UnitTestCommon})
-add_dependencies(${C_TESTLIB_STRESS} ${PROJECT_NAME}-jet-static)
+add_library(${PROJECT_NAME}TestStress STATIC ${UnitTestCommon})
+add_dependencies(${PROJECT_NAME}TestStress ${PROJECT_NAME}-jet-static)
 
-target_include_directories(${C_TESTLIB_STRESS} PRIVATE
+target_include_directories(${PROJECT_NAME}TestStress PRIVATE
     ${PROJECT_SOURCE_DIR}/test/include)
-target_compile_options(${C_TESTLIB_STRESS} PRIVATE
-    "${COMMON_TESTLIB_CC_FLAGS}")
-target_compile_definitions(${C_TESTLIB_STRESS} PRIVATE
-    "${C_TESTLIB_STRESS_DEF}")
+target_compile_definitions(${PROJECT_NAME}TestStress PRIVATE
+    JEMALLOC_STRESS_TEST
+    JEMALLOC_STRESS_TESTLIB)

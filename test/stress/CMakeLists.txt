@@ -10,14 +10,6 @@ set(TESTS_STRESS
 foreach(sourcefile ${TESTS_STRESS})
     get_filename_component(exename ${sourcefile} NAME_WE)
     set(exename "${exename}${install_suffix}")
-    add_executable(${exename} ${sourcefile})
-    add_dependencies(${exename} ${PROJECT_NAME}-jet-static)
-
-    target_include_directories(${exename} PRIVATE
-        ${PROJECT_SOURCE_DIR}/test/include)
-    target_compile_definitions(${exename} PRIVATE JEMALLOC_STRESS_TEST)
-
-    target_link_libraries(${exename} ${C_TESTLIB_STRESS} ${PROJECT_NAME}-shared)
-    target_link_libraries(${exename} ${PROJECT_NAME}-jet-static)
-    target_link_libraries(${exename} pthread)
+    createTest(${exename} ${sourcefile} JEMALLOC_STRESS_TEST)
+    target_link_libraries(${PROJECT_NAME}-test-${exename} ${PROJECT_NAME}TestStress)
 endforeach()

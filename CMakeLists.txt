@@ -358,40 +358,18 @@ else()
     set(je_ "je_")
 endif()
 
+# Enable testing when in Debug mode
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     include_directories(${PROJECT_BINARY_DIR}/test/include)
     include_directories(${PROJECT_BINARY_DIR}/include/jemalloc/internal)
 
-    # TODO: all of these variables need to be refactored (here against src,test)
-    # This code organization is from the abandoned jemalloc-cmake repo which had
-    # some oddities we are still trying to flush out.
-
-    set(C_UTIL_INTEGRATION_DEFS "")
-    set(C_TESTLIB_INTEGRATION_DEFS
-        JEMALLOC_INTEGRATION_TEST
-    )
-    set(C_TESTLIB_INTEGRATION ${PROJECT_NAME}IntegrationTest${install_suffix})
-
-    set(C_TESTLIB_UNIT_DEFS
-        JEMALLOC_UNIT_TEST
-    )
-    set(C_TESTLIB_STRESS_DEF
-        JEMALLOC_STRESS_TEST
-        JEMALLOC_STRESS_TESTLIB
-    )
-    set(C_TESTLIB_STRESS ${PROJECT_NAME}TestStress${install_suffix})
-
-    set(C_UNITETEST_DEFS
-        JEMALLOC_UNIT_TEST
-    )
-
     include(CTest)
     enable_testing()
 
-    # check target is scoped with -jemalloc because when jemalloc
+    # check target is scoped with jemalloc- because when jemalloc
     # is included as cmake dependency in other projects, we don't
     # want to conflict with any other 'check' targets
-    add_custom_target(check-jemalloc COMMAND ${CMAKE_CTEST_COMMAND})
+    add_custom_target(${PROJECT_NAME}-check COMMAND ${CMAKE_CTEST_COMMAND})
 
     add_subdirectory(test)
 endif()
