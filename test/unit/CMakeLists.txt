@@ -19,6 +19,7 @@ set(UnitTests
     div.c
     emitter.c
     extent_quantize.c
+    extent_util.c
     fork.c
     hash.c
     hook.c
