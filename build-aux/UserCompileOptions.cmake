@@ -34,15 +34,14 @@ set(JEMALLOC_VERSION_USER ""
 #set(JEMALLOC_RPATH ""
 #    CACHE STRING "Colon-separated rpath (ELF systems only)")
 #--
-#867-AC_ARG_ENABLE([autogen],
-#868:  [AS_HELP_STRING([--enable-autogen], [Automatically regenerate configure output])],
-#--
 #885-AC_ARG_ENABLE([shared],
 #886:  [AS_HELP_STRING([--enable-shared], [Build shared libaries])],
+option(JEMALLOC_BUILD_SHARED "Build shared libraries" ON)
 #--
 #898-AC_ARG_ENABLE([static],
 #899:  [AS_HELP_STRING([--enable-static], [Build static libaries])],
 #900-if test "x$enable_static" = "xno" ; then
+option(JEMALLOC_BUILD_STATIC "Build static libraries" ON)
 #--
 #915-AC_ARG_WITH([mangling],
 #916:  [AS_HELP_STRING([--with-mangling=<map>], [Mangle symbols in <map>])],

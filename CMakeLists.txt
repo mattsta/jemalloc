@@ -5,11 +5,6 @@ project(jemalloc C CXX)
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-# This globally enables PIC building.
-# If we want PIC and non-PIC builds, disable this and manually manage flags
-# for custom pic-vs-non-pic targets in src/.
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 # Order of includes matters here. Modify at your own risk.
 include(${PROJECT_SOURCE_DIR}/build-aux/Utilities.cmake)
 include(${PROJECT_SOURCE_DIR}/build-aux/GetSystemSizes.cmake)

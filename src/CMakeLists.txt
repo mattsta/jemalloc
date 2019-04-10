@@ -48,6 +48,11 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         ticker.c)
     # No symbols even in debug mode
     # mb.c
+
+    # Also, test binaries link against jemalloc-static,
+    # so override any user preference and create static library when testing.
+    set(JEMALLOC_BUILD_STATIC ON)
+
 endif()
 
 if(NOT JEMALLOC_CXX_DISABLE)
@@ -67,7 +72,7 @@ if(POLICY CMP0042)
 endif()
 
 find_program(JEMALLOC_AWK_EXEC awk)
-function(ExtractSymbolsGenerateNamespaceHeader target top-target symExt awkTarget awk dir hdr)
+function(ExtractSymbolsGenerateNamespaceHeader target top-target symExt awk dir hdr)
 # Don't compile -syms with optimization so it builds faster.
 # The target is only for symbol extraction so we don't care about performance.
 target_compile_options(${target} PRIVATE "-O0")
@@ -146,7 +151,6 @@ foreach(sym ${JEMALLOC_CMAKE_SOURCES})
             # dependency of the top level target so everything builds in a correct oder.
             add_custom_target(${symTarget}
                 DEPENDS
-                ${awkTarget}
                 "${PROJECT_BINARY_DIR}/src/syms/${obj}.${symExt}"
                 ${target}
             )
@@ -214,66 +218,73 @@ endfunction()
 # rebuilding, we need all .o files to be generated first, so the symbol
 # extraction ("-syms") will depend on objects created by -syms-internal.
 add_library(${PROJECT_NAME}-syms-internal STATIC ${JEMALLOC_CMAKE_SOURCES})
-add_custom_target(${PROJECT_NAME}-syms DEPENDS
-    ${PROJECT_NAME}-syms-internal
-    jemalloc-private-symbols-awk
-)
+add_dependencies(${PROJECT_NAME}-syms-internal jemalloc-private-symbols-awk)
 
 # Stash "syms" archive in a subdirectory so it doesn't confuse users
 set_target_properties(${PROJECT_NAME}-syms-internal PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "syms/")
 
+add_custom_target(${PROJECT_NAME}-syms DEPENDS ${PROJECT_NAME}-syms-internal)
 ExtractSymbolsGenerateNamespaceHeader(
     ${PROJECT_NAME}-syms-internal
     ${PROJECT_NAME}-syms
     "sym"
-    jemalloc-private-symbols-awk
     "private_symbols.awk"
     "${PROJECT_NAME}-syms-internal.dir"
     "private_namespace.h"
 )
 
+if(JEMALLOC_BUILD_SHARED)
+    # This must be set *before* the OBJECT library is created below
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 # Bring sources into an object library so we can include elsewhere.
 # (also so we don't compile twice for both -static and -shared)
 add_library(${PROJECT_NAME} OBJECT ${JEMALLOC_CMAKE_SOURCES})
-
-# The original library, delivery product
-add_library(${PROJECT_NAME}-static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
-
-# Now add shared library. Needed for tests and benchmarks or preloading.
-add_library(${PROJECT_NAME}-shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
-
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}-syms)
 
-if(clock_gettime_in_librt)
-    target_link_libraries(${PROJECT_NAME}-shared rt)
+if(JEMALLOC_BUILD_SHARED)
+    # Now add shared library. Needed for tests and benchmarks or preloading.
+    add_library(${PROJECT_NAME}-shared SHARED $<TARGET_OBJECTS:${PROJECT_NAME}>)
+
+    if(clock_gettime_in_librt)
+        target_link_libraries(${PROJECT_NAME}-shared rt)
+    endif()
+
+    if(has_libpthread)
+        target_link_libraries(${PROJECT_NAME}-shared pthread)
+    endif()
+
+    if(has_libm)
+        target_link_libraries(${PROJECT_NAME}-shared m)
+    endif()
+
+    if(JEMALLOC_HAVE_DLSYM)
+        target_link_libraries(${PROJECT_NAME}-shared dl)
+    endif()
+
+    set_target_properties(${PROJECT_NAME}-shared PROPERTIES
+        OUTPUT_NAME ${PROJECT_NAME})
 endif()
 
-if(has_libpthread)
-    target_link_libraries(${PROJECT_NAME}-shared pthread)
+if(JEMALLOC_BUILD_STATIC)
+    add_library(${PROJECT_NAME}-static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}>)
+
+    # Set the name of library filename to be "libjemalloc.*"
+    # instead of their full CMake libary names of libjemalloc-static.a, etc.
+    set_target_properties(${PROJECT_NAME}-static PROPERTIES
+        OUTPUT_NAME ${PROJECT_NAME})
 endif()
-
-if(has_libm)
-    target_link_libraries(${PROJECT_NAME}-shared m)
-endif()
-
-if(JEMALLOC_HAVE_DLSYM)
-    target_link_libraries(${PROJECT_NAME}-shared dl)
-endif()
-
-# Set the name of static and shared lib filenames to be "libjemalloc.*"
-# instead of their full CMake libary names of libjemalloc-static.a, etc.
-set_target_properties(${PROJECT_NAME}-shared PROPERTIES
-    OUTPUT_NAME ${PROJECT_NAME})
-set_target_properties(${PROJECT_NAME}-static PROPERTIES
-    OUTPUT_NAME ${PROJECT_NAME})
-
-# Need to export from DLL
-target_compile_definitions(${PROJECT_NAME}-shared PRIVATE DLLEXPORT)
 
 if(JEMALLOC_PREFIX)
-    target_compile_definitions(${PROJECT_NAME}-static PRIVATE JEMALLOC_MANGLE)
-    target_compile_definitions(${PROJECT_NAME}-shared PRIVATE JEMALLOC_MANGLE)
+    if(JEMALLOC_BUILD_STATIC)
+        target_compile_definitions(${PROJECT_NAME}-static PRIVATE JEMALLOC_MANGLE)
+    endif()
+
+    if(JEMALLOC_BUILD_SHARED)
+        target_compile_definitions(${PROJECT_NAME}-shared PRIVATE JEMALLOC_MANGLE)
+    endif()
 endif()
 
 # Right now we use Debug mode to imply ENABLE BUILDING ALL TESTS
@@ -296,10 +307,8 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         ${JEMALLOC_CMAKE_SOURCES}
     )
 
-    add_custom_target(${PROJECT_NAME}-jet-syms DEPENDS
-        ${PROJECT_NAME}-jet-syms-internal
-        jemalloc-private-symbols-awk-jet
-    )
+    add_dependencies(${PROJECT_NAME}-jet-syms-internal
+        jemalloc-private-symbols-awk-jet)
 
     target_compile_definitions(${PROJECT_NAME}-jet-syms-internal
         PRIVATE
@@ -308,6 +317,10 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
     set_target_properties(${PROJECT_NAME}-jet-syms-internal PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "syms/")
 
+    add_custom_target(${PROJECT_NAME}-jet-syms DEPENDS
+        ${PROJECT_NAME}-jet-syms-internal
+    )
+
     # Attach symbol extraction as dependency of JET
     add_dependencies(${PROJECT_NAME}-jet ${PROJECT_NAME}-jet-syms)
 
@@ -315,7 +328,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         ${PROJECT_NAME}-jet-syms-internal
         ${PROJECT_NAME}-jet-syms
         "sym.jet"
-        jemalloc-private-symbols-awk-jet
         "private_symbols_jet.awk"
         "${PROJECT_NAME}-jet-syms-internal.dir"
         "private_namespace_jet.h"
