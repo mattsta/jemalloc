@@ -1,6 +1,6 @@
 ##############################################################################
 ## Determine system page size and cache line size at compile time
-function (GetSystemSizes OUTPUT_VAR_NAME_PAGE_SIZE OUTPUT_VAR_NAME_CACHE_SIZE)
+function(GetSystemSizes OUTPUT_VAR_NAME_PAGE_SIZE OUTPUT_VAR_NAME_CACHE_SIZE)
     if (${OUTPUT_VAR_NAME_PAGE_SIZE} AND ${OUTPUT_VAR_NAME_CACHE_SIZE})
         # Variables already exist, don't re-calculate
         return()
@@ -112,4 +112,4 @@ int main() {
 
     set(${OUTPUT_VAR_NAME_PAGE_SIZE} ${PAGE_SIZE} PARENT_SCOPE)
     set(${OUTPUT_VAR_NAME_CACHE_SIZE} ${CACHE_SIZE} PARENT_SCOPE)
-endfunction(GetSystemSizes)
+endfunction()

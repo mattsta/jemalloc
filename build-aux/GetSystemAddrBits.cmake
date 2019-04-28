@@ -1,6 +1,6 @@
 ##############################################################################
-## Determine system page size and cache line size at compile time
-function (GetSystemAddrBits OUTPUT_VAR_VADDR)
+## Determine system virtual address bits
+function(GetSystemAddrBits OUTPUT_VAR_VADDR)
     # Direct all the files into one folder
     set(WORK_FOLDER "${PROJECT_BINARY_DIR}/GetSystemAddrBits")
     file(MAKE_DIRECTORY ${WORK_FOLDER})
@@ -56,4 +56,4 @@ int main(void) {
     message(STATUS "System addr bits: ${RUN_OUTPUT}")
 
     set(${OUTPUT_VAR_VADDR} ${RUN_OUTPUT} PARENT_SCOPE)
-endfunction(GetSystemAddrBits)
+endfunction()
