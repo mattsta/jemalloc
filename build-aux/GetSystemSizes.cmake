@@ -32,25 +32,26 @@ function(GetSystemSizes OUTPUT_VAR_NAME_PAGE_SIZE OUTPUT_VAR_NAME_CACHE_SIZE)
 
 #include <stdio.h>
 int main() {
-    long result = 0;
-    size_t cache_line_size = 0;
+    long page_size = 0;
     #ifdef _WIN32
         SYSTEM_INFO si;
+
+        GetSystemInfo(&si);
+        page_size = si.dwPageSize;
+    #else
+        page_size = sysconf(_SC_PAGESIZE);
+    #endif
+    printf(\"%ld;\", page_size);
+
+    size_t cache_line_size = 0;
+    #if defined _WIN32
         DWORD bufferSize = 0;
         DWORD i = 0;
         SYSTEM_LOGICAL_PROCESSOR_INFORMATION *buffer = 0;
 
-        GetSystemInfo(&si);
-        result = si.dwSizes;
-    #else
-        result = sysconf(_SC_PAGESIZE);
-    #endif
-    printf(\"%ld;\", result);
-
-    #if defined _WIN32
         GetLogicalProcessorInformation(0, &bufferSize);
         buffer = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION *) malloc(bufferSize);
-        GetLogicalProcessorInformation(&buffer[0], &bufferSize);
+        GetLogicalProcessorInformation(buffer, &bufferSize);
 
         for (i = 0; i != bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION); ++i) {
             if (buffer[i].Relationship == RelationCache && buffer[i].Cache.Level == 1) {
