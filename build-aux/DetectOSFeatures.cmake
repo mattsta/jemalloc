@@ -70,6 +70,8 @@ elseif(platform MATCHES "windows")
     set(abi "pecoff")
     set(JEMALLOC_MAPS_COALESCE 0)
     list(APPEND wrap_syms "tls_callback")
+    # This disables sbrk on windows.
+    set(SBRK_DEPRECATED YES)
     if(MSVC)
         message(WARNING "MSVC is not supported yet.")
     else()
