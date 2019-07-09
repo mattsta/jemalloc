@@ -66,18 +66,25 @@ elseif(platform MATCHES "solaris2")
     set(abi "elf")
 elseif(platform MATCHES "ibm-aix")
     set(abi "xcoff")
-elseif(platform MATCHES "mingw" OR platform MATCHES "cygwin")
-    set(JEMALLOC_MAPS_COALESCE 0)
+elseif(platform MATCHES "windows")
     set(abi "pecoff")
+    set(JEMALLOC_MAPS_COALESCE 0)
     list(APPEND wrap_syms "tls_callback")
+    # This disables sbrk on windows.
+    set(SBRK_DEPRECATED YES)
+    if(MSVC)
+        message(WARNING "MSVC is not supported yet.")
+    else()
+        # Mingw compiler settings.
+    endif()
 else()
     message(WARNING "Unsupported operating system: ${platform}")
     set(abi "elf")
 endif()
 
 # Only run check if we haven't run it before
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "i686" OR
-   CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "i686" OR CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" OR
+   CMAKE_SYSTEM_PROCESSOR MATCHES "x86" OR CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64")
     check_c_source_compiles("
 int main(void) {
     __asm__ volatile(\"pause\");
@@ -116,9 +123,9 @@ if(NOT UNIX)
 endif()
 
 if(NOT LG_VADDR)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64") # maybe "arm64" too?
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
         set(LG_VADDR 48)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64")
         GetSystemAddrBits(LG_VADDR)
         # Cache result so we don't run the check every time
         set(LG_VADDR ${LG_VADDR} CACHE INTERNAL "System Address Bits")
